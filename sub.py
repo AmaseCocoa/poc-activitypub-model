@@ -24,7 +24,7 @@ def create_iri_mapping_dict(doc):
             if expanded and isinstance(expanded, list) and len(expanded) > 0:
                 # 展開後のオブジェクトから @ で始まらないキー（＝絶対URL）を抽出
                 for iri in expanded[0].keys():
-                    if not iri.startswith('@'):
+#                    if not iri.startswith('@'):
                         # マッピング辞書に保存
                         reverse_map[iri] = original_key
         except Exception:
@@ -38,11 +38,12 @@ incoming_json = {
     "@context": {
         "as": "https://www.w3.org/ns/activitystreams#",
         "schema": "http://schema.org/",
+        "t": "@type",
         "s": "as:summary",
         "c": "as:content",
         "n": "schema:name"
     },
-    "type": "Note",
+    "t": "Note",
     "s": "A note",
     "c": "My dog has fleas.",
     "n": "John Doe"
