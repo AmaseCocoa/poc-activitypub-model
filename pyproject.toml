@@ -1,0 +1,21 @@
+[project]
+name = "poc-activitypub-model"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "AmaseCocoa", email = "cocoa@amase.cc" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "apsig>=0.6.0",
+    "pyld>=3.0.0",
+    "requests>=2.33.1",
+]
+
+[project.scripts]
+poc-activitypub-model = "poc_activitypub_model:main"
+
+[build-system]
+requires = ["uv_build>=0.11.3,<0.12.0"]
+build-backend = "uv_build"
