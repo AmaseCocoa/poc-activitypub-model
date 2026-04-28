@@ -1,7 +1,8 @@
 from collections import ChainMap
 from datetime import datetime, timezone
 import json
-from typing import Literal, Optional, cast
+from types import MappingProxyType
+from typing import Literal, Optional, cast, Final
 from urllib.parse import urlparse
 
 from apsig import LDSignature, ProofSigner
@@ -12,6 +13,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
 from cryptography.hazmat.primitives.serialization import load_der_private_key
 
+from poc_activitypub_model.utils import jsonld
 
 Specs = Literal["draft", "rsa2017", "fep8b32", "rfc9421"]
 SPECS_ORDER: dict[Specs, int] = {
@@ -59,6 +61,8 @@ class ActorKey:
 class ActivityPubModel:
     def __init__(self, **kwargs):
         self.__raw_data = kwargs
+        self.__mapping = jsonld.get_mapping(self.__raw_data)
+
         self.__overlay = {}
 
         self.__bytes: bytes | None = None
@@ -81,8 +85,8 @@ class ActivityPubModel:
         return self.__data
 
     @property
-    def _overlay(self) -> dict:
-        return self.__overlay
+    def _mapping(self) -> MappingProxyType:
+        return MappingProxyType(self.__mapping)
 
     def _set_raw_bytes(self, value: bytes) -> None:
         if self.__bytes is None:
@@ -91,8 +95,8 @@ class ActivityPubModel:
             raise RuntimeError("Raw bytes already set")
 
     @property
-    def _raw(self) -> dict:
-        return self.__raw_data
+    def _raw(self) -> MappingProxyType:
+        return MappingProxyType(self.__raw_data)
 
     def sign(
         self,
