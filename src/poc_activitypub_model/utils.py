@@ -4,15 +4,12 @@ from pyld import jsonld
 # noinspection PyMethodMayBeStatic
 class JSONLDTools:
     def __init__(self):
-        secure_loader = jsonld.requests_document_loader(
-            secure=True,
-            timeout=5
-        )
+        secure_loader = jsonld.requests_document_loader(secure=True, timeout=5)
         jsonld.set_document_loader(secure_loader)
 
     def get_mapping(self, doc):
         reverse_map = {}
-        context = doc.get('@context')
+        context = doc.get("@context")
 
         if not context:
             return reverse_map

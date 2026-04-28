@@ -9,12 +9,12 @@ incoming_json = {
         "t": "@type",
         "s": "as:summary",
         "c": "as:content",
-        "n": "schema:name"
+        "n": "schema:name",
     },
     "t": "Note",
     "s": "A note",
     "c": "My dog has fleas.",
-    "n": "John Doe"
+    "n": "John Doe",
 }
 
 iri_to_key = jld.get_mapping(incoming_json)

@@ -1,6 +1,6 @@
-import json
 from collections import ChainMap
 from datetime import datetime, timezone
+import json
 from typing import Literal, Optional, cast
 from urllib.parse import urlparse
 
@@ -21,19 +21,27 @@ SPECS_ORDER: dict[Specs, int] = {
     "draft": 4,
 }
 
+
 class DeletedAttribute:
     pass
 
+
 class ActorKey:
-    def __init__(self, key_id: str, public_key: str | None = None, private_key: str | None = None):
+    def __init__(
+        self, key_id: str, public_key: str | None = None, private_key: str | None = None
+    ):
         self.__key_id = key_id
 
         if not public_key and not private_key:
             raise ValueError("Either public_key or private_key must be provided")
 
         if private_key:
-            self.__private_key = load_der_private_key(private_key.encode("utf-8"), password=None, backend=default_backend())
-        self.__public_key = public_key if public_key else self.__private_key.public_key()
+            self.__private_key = load_der_private_key(
+                private_key.encode("utf-8"), password=None, backend=default_backend()
+            )
+        self.__public_key = (
+            public_key if public_key else self.__private_key.public_key()
+        )
 
     @property
     def key_id(self):
@@ -46,6 +54,7 @@ class ActorKey:
     @property
     def public_key(self):
         return self.__public_key
+
 
 class ActivityPubModel:
     def __init__(self, **kwargs):
@@ -85,8 +94,18 @@ class ActivityPubModel:
     def _raw(self) -> dict:
         return self.__raw_data
 
-    def sign(self, headers: dict, method: str, url: str, key: ActorKey, as_dict: bool = False, specs: Optional[list[Specs]] = None) -> tuple[dict | bytes, dict]:
-        _specs: list[Specs] = specs if specs is not None else cast(list[Specs], ["draft"])
+    def sign(
+        self,
+        headers: dict,
+        method: str,
+        url: str,
+        key: ActorKey,
+        as_dict: bool = False,
+        specs: Optional[list[Specs]] = None,
+    ) -> tuple[dict | bytes, dict]:
+        _specs: list[Specs] = (
+            specs if specs is not None else cast(list[Specs], ["draft"])
+        )
         specs_to_loop = sorted(set(_specs), key=lambda x: SPECS_ORDER.get(x, 99))
         body = self.dump()
         final_headers = headers.copy()
@@ -96,35 +115,46 @@ class ActivityPubModel:
 
             match (spec, key.private_key):
                 case ("draft", RSAPrivateKey() as pk):
-                    final_headers = Signer(final_headers, pk, method, url, key.key_id, body_bytes).sign()
+                    final_headers = Signer(
+                        final_headers, pk, method, url, key.key_id, body_bytes
+                    ).sign()
 
                 case ("rfc9421", RSAPrivateKey() as pk) if "draft" not in specs_to_loop:
                     p = urlparse(url)
-                    final_headers = RFC9421Signer(pk, key.key_id).sign(method, p.path, p.netloc.lower(), final_headers, body)
+                    final_headers = RFC9421Signer(pk, key.key_id).sign(
+                        method, p.path, p.netloc.lower(), final_headers, body
+                    )
 
                 case ("rsa2017", RSAPrivateKey() as pk):
                     body = LDSignature().sign(body, key.key_id, pk)
 
                 case ("fep8b32", Ed25519PrivateKey() as pk):
-                    now = datetime.now(timezone.utc).isoformat(timespec='seconds').replace('+00:00', 'Z')
-                    body = ProofSigner(pk).sign(body, {
-                        "type": "DataIntegrityProof",
-                        "cryptosuite": "eddsa-jcs-2022",
-                        "verificationMethod": key.key_id,
-                        "created": now,
-                    })
+                    now = (
+                        datetime.now(timezone.utc)
+                        .isoformat(timespec="seconds")
+                        .replace("+00:00", "Z")
+                    )
+                    body = ProofSigner(pk).sign(
+                        body,
+                        {
+                            "type": "DataIntegrityProof",
+                            "cryptosuite": "eddsa-jcs-2022",
+                            "verificationMethod": key.key_id,
+                            "created": now,
+                        },
+                    )
 
                 case _:
-                    raise ValueError(f"Unknown or incompatible spec/key: {spec} with {type(key.private_key)}")
+                    raise ValueError(
+                        f"Unknown or incompatible spec/key: {spec} with {type(key.private_key)}"
+                    )
 
         final_body_bytes = json.dumps(body, ensure_ascii=False).encode("utf-8")
         return (body if as_dict else final_body_bytes), final_headers
 
-
     def _dump(self) -> dict:
         return {
-            k: v for k, v in self.__data.items()
-            if not isinstance(v, DeletedAttribute)
+            k: v for k, v in self.__data.items() if not isinstance(v, DeletedAttribute)
         }
 
     def dump(self) -> dict:
