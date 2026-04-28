@@ -11,7 +11,8 @@ from apsig.rfc9421 import RFC9421Signer
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
-from cryptography.hazmat.primitives.serialization import load_der_private_key
+from cryptography.hazmat.primitives.serialization import load_der_private_key, load_pem_public_key, load_der_public_key
+from cryptography.hazmat.primitives.asymmetric.types import PrivateKeyTypes, PublicKeyTypes
 
 from poc_activitypub_model.utils import jsonld
 
@@ -30,20 +31,32 @@ class DeletedAttribute:
 
 class ActorKey:
     def __init__(
-        self, key_id: str, public_key: str | None = None, private_key: str | None = None
+        self, key_id: str, public_key: PublicKeyTypes | str | bytes | None = None, private_key: PrivateKeyTypes | bytes | None = None
     ):
         self.__key_id = key_id
 
         if not public_key and not private_key:
             raise ValueError("Either public_key or private_key must be provided")
 
-        if private_key:
-            self.__private_key = load_der_private_key(
-                private_key.encode("utf-8"), password=None, backend=default_backend()
-            )
-        self.__public_key = (
-            public_key if public_key else self.__private_key.public_key()
-        )
+        match private_key:
+            case bytes():
+                self.__private_key = load_der_private_key(
+                    private_key, password=None, backend=default_backend()
+                )
+            case None:
+                pass
+            case _:
+                self.__private_key = private_key
+
+        match public_key:
+            case str():
+                self.__public_key = load_pem_public_key(public_key.encode("utf-8"))
+            case bytes():
+                self.__public_key = load_der_public_key(public_key)
+            case None:
+                self.__public_key = self.__private_key.public_key()
+            case _:
+                self.__public_key = public_key
 
     @property
     def key_id(self):
@@ -157,9 +170,17 @@ class ActivityPubModel:
         return (body if as_dict else final_body_bytes), final_headers
 
     def _dump(self) -> dict:
-        return {
-            k: v for k, v in self.__data.items() if not isinstance(v, DeletedAttribute)
-        }
+        result = {}
+        for k, v in self._data.items():
+            if isinstance(v, DeletedAttribute):
+                continue
+            if isinstance(v, ActivityPubModel):
+                result[k] = v.dump()
+            elif isinstance(v, list):
+                result[k] = [i.dump() if isinstance(i, ActivityPubModel) else i for i in v]
+            else:
+                result[k] = v
+        return result
 
     def dump(self) -> dict:
         return self._dump()
