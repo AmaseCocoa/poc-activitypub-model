@@ -1,7 +1,7 @@
 import json
 from collections import ChainMap
 from datetime import datetime, timezone
-from typing import Literal, Optional
+from typing import Literal, Optional, cast
 from urllib.parse import urlparse
 
 from apsig import LDSignature, ProofSigner
@@ -86,60 +86,40 @@ class ActivityPubModel:
         return self.__raw_data
 
     def sign(self, headers: dict, method: str, url: str, key: ActorKey, as_dict: bool = False, specs: Optional[list[Specs]] = None) -> tuple[dict | bytes, dict]:
-        if not specs:
-            specs = ["draft"]
-
-        specs = sorted(set(specs or []), key=lambda x: SPECS_ORDER.get(x, 99))
-
+        _specs: list[Specs] = specs if specs is not None else cast(list[Specs], ["draft"])
+        specs_to_loop = sorted(set(_specs), key=lambda x: SPECS_ORDER.get(x, 99))
         body = self.dump()
-        body_str = json.dumps(body, ensure_ascii=False)
-        private_key = key.private_key
         final_headers = headers.copy()
-        for spec in specs or []:
-            if isinstance(private_key, RSAPrivateKey):
-                if spec == "draft":
-                    signer = Signer(
-                        headers=final_headers,
-                        private_key=private_key,
-                        method=method,
-                        url=url,
-                        key_id=key.key_id,
-                        body=body_str.encode("utf-8"),
-                    )
-                    final_headers = signer.sign()
-                elif spec == "rfc9421" and "draft" not in specs:
-                    parsed_url = urlparse(url)
-                    signer = RFC9421Signer(private_key, key.key_id)
-                    final_headers = signer.sign(method, parsed_url.path, parsed_url.netloc.lower(), final_headers, body)
-                elif spec == "rsa2017":
-                    ld_signer = LDSignature()
-                    body = ld_signer.sign(
-                        doc=body,
-                        creator=key.key_id,
-                        private_key=private_key
-                    )
-                    body_str = json.dumps(body, ensure_ascii=False)
-                else:
-                    raise ValueError(f"Unknown spec: {spec}")
-            elif isinstance(private_key, Ed25519PrivateKey):
-                if spec == "fep8b32":
+
+        for spec in specs_to_loop:
+            body_bytes = json.dumps(body, ensure_ascii=False).encode("utf-8")
+
+            match (spec, key.private_key):
+                case ("draft", RSAPrivateKey() as pk):
+                    final_headers = Signer(final_headers, pk, method, url, key.key_id, body_bytes).sign()
+
+                case ("rfc9421", RSAPrivateKey() as pk) if "draft" not in specs_to_loop:
+                    p = urlparse(url)
+                    final_headers = RFC9421Signer(pk, key.key_id).sign(method, p.path, p.netloc.lower(), final_headers, body)
+
+                case ("rsa2017", RSAPrivateKey() as pk):
+                    body = LDSignature().sign(body, key.key_id, pk)
+
+                case ("fep8b32", Ed25519PrivateKey() as pk):
                     now = datetime.now(timezone.utc).isoformat(timespec='seconds').replace('+00:00', 'Z')
-                    signer = ProofSigner(private_key)
-                    body = signer.sign(body, {
+                    body = ProofSigner(pk).sign(body, {
                         "type": "DataIntegrityProof",
                         "cryptosuite": "eddsa-jcs-2022",
                         "verificationMethod": key.key_id,
                         "created": now,
                     })
-                    body_str = json.dumps(body, ensure_ascii=False)
-                else:
-                    raise ValueError(f"Unknown spec: {spec}")
-            else:
-                raise ValueError(f"Unknown spec: {spec}")
 
-        if as_dict:
-            return body, final_headers
-        return json.dumps(body, ensure_ascii=False).encode("utf-8"), final_headers
+                case _:
+                    raise ValueError(f"Unknown or incompatible spec/key: {spec} with {type(key.private_key)}")
+
+        final_body_bytes = json.dumps(body, ensure_ascii=False).encode("utf-8")
+        return (body if as_dict else final_body_bytes), final_headers
+
 
     def _dump(self) -> dict:
         return {
