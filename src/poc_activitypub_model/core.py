@@ -2,7 +2,7 @@ from collections import ChainMap
 from datetime import datetime, timezone
 import json
 from types import MappingProxyType
-from typing import Literal, Optional, cast, Final
+from typing import Literal, Optional, cast
 from urllib.parse import urlparse
 
 from apsig import LDSignature, ProofSigner
