@@ -81,8 +81,16 @@ class ActivityPubModel:
         self.__bytes: bytes | None = None
         self.__data = None
 
+    def _set_raw_bytes(self, value: bytes) -> None:
+        if self.__bytes is None:
+            self.__bytes = value
+        else:
+            raise RuntimeError("Raw bytes already set")
+
     @classmethod
     def from_dict(cls, data: dict) -> "ActivityPubModel":
+        instance = cls(**data)
+        instance._set_raw_bytes(b"")
         return cls(**data)
 
     @classmethod
@@ -101,11 +109,6 @@ class ActivityPubModel:
     def _mapping(self) -> MappingProxyType:
         return MappingProxyType(self.__mapping)
 
-    def _set_raw_bytes(self, value: bytes) -> None:
-        if self.__bytes is None:
-            self.__bytes = value
-        else:
-            raise RuntimeError("Raw bytes already set")
 
     @property
     def _raw(self) -> MappingProxyType:
