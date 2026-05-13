@@ -1,4 +1,6 @@
+from datetime import datetime
 from poc_activitypub_model.base import ActivityPubModel
+from poc_activitypub_model.utils import parse_xsd_datetime
 
 
 class DataIntegrityProof(ActivityPubModel):
@@ -9,13 +11,13 @@ class DataIntegrityProof(ActivityPubModel):
     def proof_value(self) -> str | None: return self._data.get("https://w3id.org/security#proofValue")
 
     @property
-    def proof_purpose(self) -> str | None: return self._data.get("https://w3id.org/security#proofValue")
+    def proof_purpose(self) -> str | None: return self._data.get("https://w3id.org/security#proofPurpose")
 
     @property
-    def verification_method(self) -> str | None: return self._data.get("https://w3id.org/security#proofValue")
+    def verification_method(self) -> str | None: return self._data.get("https://w3id.org/security#verificationMethod")
 
     @property
-    def created(self) -> str | None: return self._data.get("https://w3id.org/security#proofValue")
+    def created(self) -> datetime | None: return parse_xsd_datetime(self._data.get("https://w3id.org/security#created"))
 
 class Multikey(ActivityPubModel):
     @property

@@ -1,5 +1,15 @@
+from datetime import datetime
 from pyld import jsonld as _jsonld
 
+
+def parse_xsd_datetime(iso_str: str | None) -> datetime | None:
+    if not iso_str or iso_str.isspace():
+        return None
+        
+    try:
+        return datetime.fromisoformat(iso_str.replace('Z', '+00:00'))
+    except ValueError:
+        return None
 
 # noinspection PyMethodMayBeStatic
 class JSONLDTools:
