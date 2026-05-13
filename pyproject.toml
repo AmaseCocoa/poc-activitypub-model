@@ -9,6 +9,7 @@ authors = [
 requires-python = ">=3.12"
 dependencies = [
     "apsig>=0.6.0",
+    "multiformats>=0.3.1.post4",
     "pyld>=3.0.0",
     "requests>=2.33.1",
 ]
