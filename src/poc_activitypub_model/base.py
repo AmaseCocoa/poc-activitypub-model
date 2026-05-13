@@ -81,6 +81,23 @@ class ActivityPubModel:
         self.__bytes: bytes | None = None
         self.__data = None
 
+    def __getattr__(self, name):
+        data = self._data
+        if name in data:
+            return data[name]
+        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
+
+    def __setattr__(self, name, value):
+        if name.startswith("_"):
+            super().__setattr__(name, value)
+            return
+
+        prop = getattr(type(self), name, None)
+        if isinstance(prop, property) and prop.fset is not None:
+            super().__setattr__(name, value)
+        else:
+            raise AttributeError(f"Attribute '{name}' is read-only.")
+
     def _set_raw_bytes(self, value: bytes) -> None:
         if self.__bytes is None:
             self.__bytes = value
@@ -91,7 +108,7 @@ class ActivityPubModel:
     def from_dict(cls, data: dict) -> "ActivityPubModel":
         instance = cls(**data)
         instance._set_raw_bytes(b"")
-        return cls(**data)
+        return instance
 
     @classmethod
     def from_bytes(cls, data: bytes) -> "ActivityPubModel":
