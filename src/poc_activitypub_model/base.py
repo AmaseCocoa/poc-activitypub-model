@@ -73,6 +73,8 @@ class ActorKey:
 
 class ActivityPubModel:
     def __init__(self, **kwargs):
+        self._kv = {}
+
         self.__raw_data = kwargs
         self.__mapping = jsonld.get_mapping(self.__raw_data)
 
